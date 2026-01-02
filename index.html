@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>香肠大乱斗：拖拽投掷版</title>
+    <title>香肠大乱斗：暴击飘字版</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #ffeb3b; overflow: hidden; position: relative; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none; /* 禁止浏览器默认滚动 */ }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #ffeb3b; overflow: hidden; position: relative; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none; }
         
         #start-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -21,21 +21,31 @@
             animation: pulse 1s infinite;
         }
 
-        /* 计分板样式 */
+        /* 背景总分板 */
         #scoreboard {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 100px;
-            font-family: 'Arial Black', sans-serif;
-            font-weight: 900;
-            color: rgba(0, 0, 0, 0.1); /* 半透明黑色 */
-            z-index: 1; /* 在最底层 */
-            pointer-events: none; /* 让点击穿透它 */
-            transition: transform 0.1s;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 100px; font-family: 'Arial Black', sans-serif; font-weight: 900;
+            color: rgba(0, 0, 0, 0.05); /* 颜色淡一点，不要抢戏 */
+            z-index: 1; pointer-events: none; transition: transform 0.1s;
         }
-        /* 得分时的动画 */
-        .score-pop { transform: translate(-50%, -50%) scale(1.2) !important; color: rgba(211, 47, 47, 0.2) !important; }
+
+        /* --- 新增：撞击点飘字特效 --- */
+        .score-float {
+            position: absolute;
+            font-size: 28px;
+            font-weight: 900;
+            color: #d32f2f;
+            text-shadow: 2px 2px 0px #fff; /* 白色描边让字更清楚 */
+            z-index: 30; /* 在最上层 */
+            pointer-events: none;
+            animation: floatUp 0.8s ease-out forwards;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -100px) scale(1); opacity: 0; }
+        }
 
         .sausage-box { position: absolute; display: flex; justify-content: center; align-items: center; visibility: hidden; will-change: transform; cursor: grab; }
         .sausage-box:active { cursor: grabbing; }
@@ -78,15 +88,14 @@
     </audio>
 
     <div id="start-overlay">
-        <div style="font-size: 60px">🖐️</div>
+        <div style="font-size: 60px">🥊</div>
         <div style="font-size: 20px; margin-top: 10px">
-            拖拽投掷 · 晃动撞击 · 累积分数
+            用力甩动 · 拒绝轻蹭
         </div>
-        <div id="play-btn">开始挑战</div>
+        <div id="play-btn">开始暴击</div>
     </div>
 
     <div id="scoreboard">0</div>
-
     <div id="particles-container"></div>
 
     <div id="big-sausage" class="sausage-box">
@@ -96,13 +105,12 @@
         <svg viewBox="-140 -140 280 280" xmlns="http://www.w3.org/2000/svg"><rect x="-55" y="-130" width="110" height="260" fill="#cd5c5c" /><path d="M -35 -90 Q -25 0 -35 90" stroke="rgba(255,255,255,0.5)" stroke-width="14" fill="none" stroke-linecap="round" /><path d="M -25 -110 Q 0 -120 25 -110" stroke="rgba(255,255,255,0.4)" stroke-width="10" fill="none" stroke-linecap="round" /><path d="M -45 -50 L 5 -60" stroke="#8b0000" stroke-width="6" stroke-linecap="round" /><path d="M -40 30 L 15 20" stroke="#8b0000" stroke-width="6" stroke-linecap="round" /><path d="M -45 110 L 0 100" stroke="#8b0000" stroke-width="6" stroke-linecap="round" /></svg>
     </div>
 
-    <div class="text">⚠️ 用力把香肠甩到墙上！ ⚠️</div>
+    <div class="text">⚠️ 用力砸向墙壁才有分！ ⚠️</div>
 
     <script>
         const w = window.innerWidth, h = window.innerHeight;
         let score = 0;
         
-        // 增加 isDragging 状态，防止拖拽时物理引擎干扰
         const items = [
             { id: 'big', el: document.getElementById('big-sausage'), x: w/2-160, y: h/2-160, vx: 0, vy: 0, w: 320, h: 320, cooldown: 0, isDragging: false },
             { id: 'small', el: document.getElementById('small-sausage'), x: w/2-80, y: h/2-80, vx: 0, vy: 0, w: 160, h: 160, cooldown: 0, isDragging: false }
@@ -115,35 +123,53 @@
         const particlesContainer = document.getElementById('particles-container');
         const scoreboard = document.getElementById('scoreboard');
 
-        // 更新计分
-        function addScore(points) {
+        // === 新增：在指定位置显示飘字 ===
+        function showFloatingScore(x, y, points) {
+            // 创建数字元素
+            const el = document.createElement('div');
+            el.classList.add('score-float');
+            el.innerText = "+" + points;
+            
+            // 确保文字不会完全贴在屏幕边缘外面
+            const safeX = Math.min(Math.max(x, 20), window.innerWidth - 20);
+            const safeY = Math.min(Math.max(y, 40), window.innerHeight - 20);
+            
+            el.style.left = safeX + 'px';
+            el.style.top = safeY + 'px';
+            
+            document.body.appendChild(el);
+
+            // 动画结束后移除元素
+            setTimeout(() => {
+                el.remove();
+            }, 800);
+
+            // 更新总分
             score += points;
             scoreboard.innerText = score;
-            // 得分动画
-            scoreboard.classList.remove('score-pop');
-            void scoreboard.offsetWidth;
-            scoreboard.classList.add('score-pop');
         }
 
         // 碎裂特效
         function createExplosion(x, y) {
             if (navigator.vibrate) navigator.vibrate([50, 50, 150]);
+            
+            // 只有剧烈撞击才晃动屏幕
             body.classList.remove('shake-screen');
             void body.offsetWidth; 
             body.classList.add('shake-screen');
 
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < 15; i++) {
                 const p = document.createElement('div');
                 p.classList.add('particle');
                 p.style.left = x + 'px';
                 p.style.top = y + 'px';
-                p.style.width = (Math.random() * 15 + 5) + 'px';
+                p.style.width = (Math.random() * 12 + 4) + 'px';
                 p.style.height = p.style.width;
                 p.style.background = Math.random() > 0.6 ? '#cd5c5c' : '#8b0000';
                 particlesContainer.appendChild(p);
 
                 const angle = Math.random() * Math.PI * 2;
-                const velocity = Math.random() * 15 + 5; 
+                const velocity = Math.random() * 12 + 4; 
                 const velX = Math.cos(angle) * velocity;
                 const velY = Math.sin(angle) * velocity;
 
@@ -152,8 +178,8 @@
 
                 const anim = setInterval(() => {
                     posX += velX; posY += velY;
-                    posY += 1; 
-                    opacity -= 0.04;
+                    posY += 1.5; // 粒子重力略微加大
+                    opacity -= 0.05;
                     p.style.left = posX + 'px';
                     p.style.top = posY + 'px';
                     p.style.opacity = opacity;
@@ -168,42 +194,46 @@
                 items.forEach(i => {
                     if (i.cooldown > 0) i.cooldown--;
 
-                    // 只有在没有被拖拽的时候，物理引擎才生效
                     if (!i.isDragging) {
                         i.vx += gravityX * 0.6;
                         i.vy += gravityY * 0.6;
                         i.vx *= 0.98; i.vy *= 0.98;
                         i.x += i.vx; i.y += i.vy;
 
+                        // 计算合速度
                         const speed = Math.sqrt(i.vx*i.vx + i.vy*i.vy);
+                        
                         let hit = false;
                         let hitX = 0, hitY = 0;
 
                         if (i.x <= 0) {
                             i.x = 0; i.vx *= -0.6; 
-                            hit = true; hitX = 0; hitY = i.y + i.h/2;
+                            hit = true; hitX = 30; hitY = i.y + i.h/2; // 撞点修正到屏幕内一点
                         }
                         if (i.x + i.w >= cw) {
                             i.x = cw - i.w; i.vx *= -0.6;
-                            hit = true; hitX = cw; hitY = i.y + i.h/2;
+                            hit = true; hitX = cw - 30; hitY = i.y + i.h/2;
                         }
                         if (i.y <= 0) {
                             i.y = 0; i.vy *= -0.6;
-                            hit = true; hitX = i.x + i.w/2; hitY = 0;
+                            hit = true; hitX = i.x + i.w/2; hitY = 30;
                         }
                         if (i.y + i.h >= ch) {
                             i.y = ch - i.h; i.vy *= -0.6;
-                            hit = true; hitX = i.x + i.w/2; hitY = ch;
+                            hit = true; hitX = i.x + i.w/2; hitY = ch - 30;
                         }
 
-                        // 撞击逻辑：速度 > 8 且冷却完毕
-                        if (hit && speed > 8 && i.cooldown <= 0) {
+                        // --- 核心修改：提高阈值 ---
+                        // 原来是 8，现在改为 15。
+                        // 这意味着轻微的滑动（速度通常在 2-8 之间）不会触发任何效果
+                        if (hit && speed > 15 && i.cooldown <= 0) {
                             createExplosion(hitX, hitY);
-                            // 计分逻辑
-                            if (i.id === 'big') addScore(228);
-                            else addScore(114);
                             
-                            i.cooldown = 20; 
+                            // 在撞击点显示分数
+                            if (i.id === 'big') showFloatingScore(hitX, hitY, 228);
+                            else showFloatingScore(hitX, hitY, 114);
+                            
+                            i.cooldown = 25; // 冷却时间稍微增加，防止连续误判
                         }
                     }
 
@@ -214,70 +244,53 @@
         }
         animate();
 
-        // === 拖拽与投掷逻辑 ===
+        // 拖拽逻辑
         let dragItem = null;
         let dragOffsetX = 0, dragOffsetY = 0;
-        let lastX = 0, lastY = 0; // 用于计算投掷速度
+        let lastX = 0, lastY = 0;
         let dragVx = 0, dragVy = 0;
 
         function handleStart(e) {
-            // 找到点击的是哪个香肠
             const target = e.target.closest('.sausage-box');
             if (!target) return;
-            
             const item = items.find(i => i.el === target);
             if (!item) return;
 
-            e.preventDefault(); // 防止滚动
+            e.preventDefault();
             dragItem = item;
-            dragItem.isDragging = true; // 暂停物理引擎
-
-            // 获取触摸/鼠标坐标
+            dragItem.isDragging = true;
+            
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-            // 计算手指点在香肠的哪个位置
             dragOffsetX = clientX - dragItem.x;
             dragOffsetY = clientY - dragItem.y;
-            
-            // 初始化速度记录
-            lastX = clientX;
-            lastY = clientY;
+            lastX = clientX; lastY = clientY;
             dragVx = 0; dragVy = 0;
         }
 
         function handleMove(e) {
             if (!dragItem) return;
             e.preventDefault();
-
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-            // 更新位置
             dragItem.x = clientX - dragOffsetX;
             dragItem.y = clientY - dragOffsetY;
 
-            // 计算即时速度 (用于投掷)
             dragVx = clientX - lastX;
             dragVy = clientY - lastY;
-            
-            lastX = clientX;
-            lastY = clientY;
+            lastX = clientX; lastY = clientY;
         }
 
         function handleEnd(e) {
             if (!dragItem) return;
-            
-            // 释放时，赋予香肠最后的手势速度（投掷效果）
-            // 乘以 1.5 让投掷更有力
-            dragItem.vx = dragVx * 1.5;
-            dragItem.vy = dragVy * 1.5;
-
-            dragItem.isDragging = false; // 恢复物理引擎
+            // 投掷力度增强 1.8 倍，更容易触发暴击
+            dragItem.vx = dragVx * 1.8;
+            dragItem.vy = dragVy * 1.8;
+            dragItem.isDragging = false;
             dragItem = null;
         }
 
-        // 绑定拖拽事件
         document.addEventListener('touchstart', handleStart, {passive: false});
         document.addEventListener('touchmove', handleMove, {passive: false});
         document.addEventListener('touchend', handleEnd);
@@ -285,8 +298,6 @@
         document.addEventListener('mousemove', handleMove);
         document.addEventListener('mouseup', handleEnd);
 
-
-        // === 陀螺仪与启动逻辑 ===
         const bgm = document.getElementById('bgm');
         const overlay = document.getElementById('start-overlay');
         const playBtn = document.getElementById('play-btn');
