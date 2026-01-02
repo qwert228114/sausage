@@ -3,204 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>巨型双肠乱舞（最终修复版）</title>
+    <title>香肠乱舞（全平台兼容版）</title>
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #ffeb3b;
-            overflow: hidden;
-            position: relative;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent; /* 去除手机点击高亮 */
-        }
-
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #ffeb3b; overflow: hidden; position: relative; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
         #start-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0,0,0,0.85);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 999;
-            color: white;
-            font-size: 22px;
-            font-weight: bold;
-            flex-direction: column;
-            cursor: pointer;
-            text-align: center;
-            line-height: 1.5;
-        }
-        #start-overlay span {
-            font-size: 50px;
-            margin-bottom: 20px;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
-
-        .sausage-box {
-            position: absolute;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            will-change: transform;
-            visibility: hidden; 
-        }
-
-        /* 动画控制：默认暂停 */
-        .sausage-box svg {
-            animation-play-state: paused; 
-        }
-        /* 激活后开始旋转 */
-        body.playing .sausage-box svg {
-            animation-play-state: running;
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        #big-sausage { width: 320px; height: 320px; z-index: 10; }
-        #big-sausage svg {
-            width: 100%; height: 100%;
-            animation: spin 0.8s linear infinite;
-            filter: drop-shadow(15px 15px 25px rgba(0,0,0,0.4));
-        }
-
-        #small-sausage { width: 160px; height: 160px; z-index: 5; }
-        #small-sausage svg {
-            width: 100%; height: 100%;
-            animation: spin 0.5s linear infinite;
-            filter: drop-shadow(8px 8px 15px rgba(0,0,0,0.3));
+            display: flex; justify-content: center; align-items: center;
+            z-index: 999; color: white; font-size: 20px; font-weight: bold;
+            flex-direction: column; cursor: pointer; text-align: center;
         }
         
-        svg rect { rx: 60; ry: 60; }
-
-        .text {
-            position: absolute; bottom: 20px; width: 100%;
-            text-align: center; color: #d32f2f;
-            font-size: 14px; font-weight: bold;
-            pointer-events: none; opacity: 0.6;
+        /* 加一个显眼的按钮，诱导用户去点它 */
+        #play-btn {
+            background: #ff5722;
+            color: white;
+            padding: 15px 40px;
+            border-radius: 50px;
+            margin-top: 20px;
+            font-size: 24px;
+            box-shadow: 0 4px 15px rgba(255, 87, 34, 0.4);
+            animation: pulse 1.5s infinite;
         }
+
+        .sausage-box { position: absolute; display: flex; justify-content: center; align-items: center; visibility: hidden; will-change: transform; }
+        .sausage-box svg { animation-play-state: paused; }
+        body.playing .sausage-box svg { animation-play-state: running; }
+        
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        
+        #big-sausage { width: 320px; height: 320px; z-index: 10; }
+        #big-sausage svg { width: 100%; height: 100%; animation: spin 0.8s linear infinite; filter: drop-shadow(15px 15px 25px rgba(0,0,0,0.4)); }
+        #small-sausage { width: 160px; height: 160px; z-index: 5; }
+        #small-sausage svg { width: 100%; height: 100%; animation: spin 0.5s linear infinite; filter: drop-shadow(8px 8px 15px rgba(0,0,0,0.3)); }
+        svg rect { rx: 60; ry: 60; }
+        
+        .text { position: absolute; bottom: 20px; width: 100%; text-align: center; color: #d32f2f; font-size: 14px; opacity: 0.6; pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <audio id="bgm" loop src="bgm.mp3" preload="auto"></audio>
+    <audio id="bgm" loop preload="auto" playsinline webkit-playsinline>
+        <source src="bgm.mp3" type="audio/mpeg">
+    </audio>
 
     <div id="start-overlay">
-        <span>👆</span>
-        <div>点击屏幕开始<br><span style="font-size:14px; opacity:0.7; font-weight:normal">(如果不响就是没加载到音乐)</span></div>
+        <div style="margin-bottom: 20px; font-size: 50px">🌭</div>
+        <div>准备好了吗？</div>
+        <div id="play-btn">点我开始</div>
+        <div id="status" style="margin-top:10px; font-size:12px; color:#aaa; font-weight:normal"></div>
     </div>
 
     <div id="big-sausage" class="sausage-box">
-        <svg viewBox="-140 -140 280 280" xmlns="http://www.w3.org/2000/svg">
-            <rect x="-55" y="-130" width="110" height="260" fill="#cd5c5c" />
-            <path d="M -35 -90 Q -25 0 -35 90" stroke="rgba(255,255,255,0.5)" stroke-width="14" fill="none" stroke-linecap="round" />
-            <path d="M -25 -110 Q 0 -120 25 -110" stroke="rgba(255,255,255,0.4)" stroke-width="10" fill="none" stroke-linecap="round" />
-            <path d="M -45 -50 L 5 -60" stroke="#8b0000" stroke-width="6" stroke-linecap="round" />
-            <path d="M -40 30 L 15 20" stroke="#8b0000" stroke-width="6" stroke-linecap="round" />
-            <path d="M -45 110 L 0 100" stroke="#8b0000" stroke-width="6" stroke-linecap="round" />
-        </svg>
+        <svg viewBox="-140 -140 280 280" xmlns="http://www.w3.org/2000/svg"><rect x="-55" y="-130" width="110" height="260" fill="#cd5c5c" /><path d="M -35 -90 Q -25 0 -35 90" stroke="rgba(255,255,255,0.5)" stroke-width="14" fill="none" stroke-linecap="round" /><path d="M -25 -110 Q 0 -120 25 -110" stroke="rgba(255,255,255,0.4)" stroke-width="10" fill="none" stroke-linecap="round" /><path d="M -45 -50 L 5 -60" stroke="#8b0000" stroke-width="6" stroke-linecap="round" /><path d="M -40 30 L 15 20" stroke="#8b0000" stroke-width="6" stroke-linecap="round" /><path d="M -45 110 L 0 100" stroke="#8b0000" stroke-width="6" stroke-linecap="round" /></svg>
     </div>
-
     <div id="small-sausage" class="sausage-box">
-        <svg viewBox="-140 -140 280 280" xmlns="http://www.w3.org/2000/svg">
-            <rect x="-55" y="-130" width="110" height="260" fill="#cd5c5c" />
-            <path d="M -35 -90 Q -25 0 -35 90" stroke="rgba(255,255,255,0.5)" stroke-width="14" fill="none" stroke-linecap="round" />
-            <path d="M -25 -110 Q 0 -120 25 -110" stroke="rgba(255,255,255,0.4)" stroke-width="10" fill="none" stroke-linecap="round" />
-            <path d="M -45 -50 L 5 -60" stroke="#8b0000" stroke-width="6" stroke-linecap="round" />
-            <path d="M -40 30 L 15 20" stroke="#8b0000" stroke-width="6" stroke-linecap="round" />
-            <path d="M -45 110 L 0 100" stroke="#8b0000" stroke-width="6" stroke-linecap="round" />
-        </svg>
+        <svg viewBox="-140 -140 280 280" xmlns="http://www.w3.org/2000/svg"><rect x="-55" y="-130" width="110" height="260" fill="#cd5c5c" /><path d="M -35 -90 Q -25 0 -35 90" stroke="rgba(255,255,255,0.5)" stroke-width="14" fill="none" stroke-linecap="round" /><path d="M -25 -110 Q 0 -120 25 -110" stroke="rgba(255,255,255,0.4)" stroke-width="10" fill="none" stroke-linecap="round" /><path d="M -45 -50 L 5 -60" stroke="#8b0000" stroke-width="6" stroke-linecap="round" /><path d="M -40 30 L 15 20" stroke="#8b0000" stroke-width="6" stroke-linecap="round" /><path d="M -45 110 L 0 100" stroke="#8b0000" stroke-width="6" stroke-linecap="round" /></svg>
     </div>
 
-    <div class="text">⚠️ 巨物来袭 ⚠️</div>
+    <div class="text">⚠️ 全平台兼容修复版 ⚠️</div>
 
     <script>
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        const bigSize = 320;
-        const smallSize = 160;
-
+        // 1. 动画逻辑
+        const w = window.innerWidth, h = window.innerHeight;
         const items = [
-            { 
-                el: document.getElementById('big-sausage'), 
-                x: Math.random() * (w - bigSize), 
-                y: Math.random() * (h - bigSize), 
-                vx: 4, vy: 4, width: bigSize, height: bigSize 
-            },
-            { 
-                el: document.getElementById('small-sausage'), 
-                x: Math.random() * (w - smallSize), 
-                y: Math.random() * (h - smallSize), 
-                vx: -7, vy: 8, width: smallSize, height: smallSize 
-            }
+            { el: document.getElementById('big-sausage'), x: w/2-160, y: h/2-160, vx: 4, vy: 4, w: 320, h: 320 },
+            { el: document.getElementById('small-sausage'), x: w/2-80, y: h/2-80, vx: -7, vy: 8, w: 160, h: 160 }
         ];
-
-        // 初始化显示
-        items.forEach(item => {
-             item.el.style.transform = `translate(${item.x}px, ${item.y}px)`;
-             item.el.style.visibility = 'visible';
-        });
-
-        let isPlaying = false; 
-
+        items.forEach(i => { i.el.style.transform = `translate(${i.x}px, ${i.y}px)`; i.el.style.visibility = 'visible'; });
+        
+        let isPlaying = false;
         function animate() {
-            if (!isPlaying) {
-                requestAnimationFrame(animate); 
-                return;
+            if(isPlaying) {
+                const cw = window.innerWidth, ch = window.innerHeight;
+                items.forEach(i => {
+                    i.x += i.vx; i.y += i.vy;
+                    if(i.x<=0 || i.x+i.w>=cw) i.vx *= -1;
+                    if(i.y<=0 || i.y+i.h>=ch) i.vy *= -1;
+                    i.el.style.transform = `translate(${i.x}px, ${i.y}px)`;
+                });
             }
-            const currentW = window.innerWidth;
-            const currentH = window.innerHeight;
-            items.forEach(item => {
-                item.x += item.vx;
-                item.y += item.vy;
-                if (item.x <= 0 || item.x + item.width >= currentW) item.vx = -item.vx;
-                if (item.y <= 0 || item.y + item.height >= currentH) item.vy = -item.vy;
-                item.el.style.transform = `translate(${item.x}px, ${item.y}px)`;
-            });
             requestAnimationFrame(animate);
         }
+        animate();
 
-        // --- 修复核心：更强壮的启动逻辑 ---
-        const overlay = document.getElementById('start-overlay');
+        // 2. 音乐核心修复逻辑
         const bgm = document.getElementById('bgm');
-        bgm.playbackRate = 1.5;
+        const overlay = document.getElementById('start-overlay');
+        const status = document.getElementById('status');
 
-        // 定义启动函数
-        function startAction() {
-            if (isPlaying) return; // 防止重复触发
+        // 在用户交互时，必须同步触发 play
+        function unlockAudio() {
+            if(isPlaying) return;
 
-            // 1. 无论音乐是否成功，先让动画跑起来！(这是最重要的修改)
-            overlay.style.display = 'none';
-            document.body.classList.add('playing');
-            isPlaying = true;
+            status.textContent = "正在加载...";
+            
+            // 关键：强制设置音量和时间，激活音频上下文
+            bgm.volume = 1.0;
+            bgm.currentTime = 0;
+            
+            // 尝试播放
+            var playPromise = bgm.play();
 
-            // 2. 尝试播放音乐，如果失败（比如文件找不到），在控制台报错但不影响动画
-            bgm.play().catch(function(error) {
-                console.log("音乐播放失败 (可能是文件名不对):", error);
-            });
+            if (playPromise !== undefined) {
+                playPromise.then(_ => {
+                    // 播放成功了！
+                    // 这时候再设置倍速，比较稳
+                    bgm.playbackRate = 1.5; 
+                    
+                    overlay.style.display = 'none';
+                    document.body.classList.add('playing');
+                    isPlaying = true;
+                })
+                .catch(error => {
+                    console.log("Play failed:", error);
+                    status.textContent = "播放失败，请检查音量或静音键";
+                    status.style.color = "yellow";
+                    
+                    // 即使没声音，也强制让动画开始，不至于卡死
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                        document.body.classList.add('playing');
+                        isPlaying = true;
+                    }, 1000);
+                });
+            }
         }
 
-        // 同时监听 点击 和 触摸，保证手机响应灵敏
-        overlay.addEventListener('click', startAction);
-        overlay.addEventListener('touchstart', function(e) {
-            e.preventDefault(); // 防止触发点击延迟
-            startAction();
-        }, {passive: false});
+        // 只使用 click，这在现代移动浏览器上最稳
+        overlay.addEventListener('click', unlockAudio);
 
-        animate();
     </script>
 </body>
 </html>
