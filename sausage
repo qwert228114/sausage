@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>巨型双肠乱舞</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffeb3b;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .sausage-box {
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            will-change: transform;
+            /* 初始先隐藏，JS计算好位置后再显示，防止闪烁 */
+            visibility: hidden; 
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- 修改这里：巨型大香肠 --- */
+        #big-sausage {
+            /* 尺寸翻倍！非常有冲击力 */
+            width: 320px;
+            height: 320px;
+            z-index: 10;
+        }
+        #big-sausage svg {
+            width: 100%;
+            height: 100%;
+            /* 转速稍快一点点，增加动感 */
+            animation: spin 0.8s linear infinite;
+            /* 投影加深加大，更有立体感 */
+            filter: drop-shadow(15px 15px 25px rgba(0,0,0,0.4));
+        }
+
+        /* --- 修改这里：巨型小香肠 --- */
+        #small-sausage {
+            /* 尺寸翻倍到 160px */
+            width: 160px;
+            height: 160px;
+            z-index: 5;
+        }
+        #small-sausage svg {
+            width: 100%;
+            height: 100%;
+            /* 极速旋转 */
+            animation: spin 0.5s linear infinite;
+            filter: drop-shadow(8px 8px 15px rgba(0,0,0,0.3));
+        }
+        
+        /* SVG 内部样式调整，让香肠看起来更“粗壮” */
+        svg rect {
+             rx: 60; ry: 60; /* 圆角更大，显得更Q弹 */
+        }
+
+        .text {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: #d32f2f;
+            font-size: 16px;
+            font-weight: bold;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="big-sausage" class="sausage-box">
+        <svg viewBox="-140 -140 280 280" xmlns="http://www.w3.org/2000/svg">
+            <rect x="-55" y="-130" width="110" height="260" fill="#cd5c5c" />
+            <path d="M -35 -90 Q -25 0 -35 90" stroke="rgba(255,255,255,0.5)" stroke-width="14" fill="none" stroke-linecap="round" />
+            <path d="M -25 -110 Q 0 -120 25 -110" stroke="rgba(255,255,255,0.4)" stroke-width="10" fill="none" stroke-linecap="round" />
+            <path d="M -45 -50 L 5 -60" stroke="#8b0000" stroke-width="6" stroke-linecap="round" />
+            <path d="M -40 30 L 15 20" stroke="#8b0000" stroke-width="6" stroke-linecap="round" />
+            <path d="M -45 110 L 0 100" stroke="#8b0000" stroke-width="6" stroke-linecap="round" />
+        </svg>
+    </div>
+
+    <div id="small-sausage" class="sausage-box">
+        <svg viewBox="-140 -140 280 280" xmlns="http://www.w3.org/2000/svg">
+            <rect x="-55" y="-130" width="110" height="260" fill="#cd5c5c" />
+            <path d="M -35 -90 Q -25 0 -35 90" stroke="rgba(255,255,255,0.5)" stroke-width="14" fill="none" stroke-linecap="round" />
+            <path d="M -25 -110 Q 0 -120 25 -110" stroke="rgba(255,255,255,0.4)" stroke-width="10" fill="none" stroke-linecap="round" />
+            <path d="M -45 -50 L 5 -60" stroke="#8b0000" stroke-width="6" stroke-linecap="round" />
+            <path d="M -40 30 L 15 20" stroke="#8b0000" stroke-width="6" stroke-linecap="round" />
+            <path d="M -45 110 L 0 100" stroke="#8b0000" stroke-width="6" stroke-linecap="round" />
+        </svg>
+    </div>
+
+    <div class="text">⚠️ 巨物来袭 ⚠️</div>
+
+    <script>
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+
+        // --- 重要：JS里的尺寸数据也要同步更新，否则碰撞检测不准 ---
+        const bigSize = 320;
+        const smallSize = 160;
+
+        const items = [
+            { 
+                el: document.getElementById('big-sausage'), 
+                // 确保出生点不会卡在屏幕外面
+                x: Math.random() * (w - bigSize), 
+                y: Math.random() * (h - bigSize), 
+                vx: 4, // 速度稍微加了一点
+                vy: 4, 
+                width: bigSize, 
+                height: bigSize 
+            },
+            { 
+                el: document.getElementById('small-sausage'), 
+                x: Math.random() * (w - smallSize), 
+                y: Math.random() * (h - smallSize), 
+                vx: -7, // 小的跑得飞快
+                vy: 8, 
+                width: smallSize, 
+                height: smallSize 
+            }
+        ];
+
+        // 初始化位置后显示元素
+        items.forEach(item => {
+             item.el.style.transform = `translate(${item.x}px, ${item.y}px)`;
+             item.el.style.visibility = 'visible';
+        });
+
+
+        function animate() {
+            const currentW = window.innerWidth;
+            const currentH = window.innerHeight;
+
+            items.forEach(item => {
+                item.x += item.vx;
+                item.y += item.vy;
+
+                // 撞墙检测
+                if (item.x <= 0 || item.x + item.width >= currentW) {
+                    item.vx = -item.vx;
+                }
+                if (item.y <= 0 || item.y + item.height >= currentH) {
+                    item.vy = -item.vy;
+                }
+
+                item.el.style.transform = `translate(${item.x}px, ${item.y}px)`;
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
+</body>
+</html>
