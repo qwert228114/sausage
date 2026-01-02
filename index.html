@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>巨型双肠乱舞</title>
+    <title>巨型双肠乱舞（带感音乐版）</title>
     <style>
         body, html {
             margin: 0;
@@ -13,6 +13,37 @@
             background-color: #ffeb3b;
             overflow: hidden;
             position: relative;
+            /* 禁止用户选中文字，防止点击时误操作 */
+            user-select: none; 
+        }
+
+        /* --- 新增：点击开始的覆盖层 --- */
+        #start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7); /* 半透明黑色背景 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999; /* 保证在最上层 */
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            flex-direction: column;
+            cursor: pointer;
+        }
+        #start-overlay span {
+            font-size: 60px;
+            margin-bottom: 20px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
         }
 
         .sausage-box {
@@ -21,8 +52,16 @@
             justify-content: center;
             align-items: center;
             will-change: transform;
-            /* 初始先隐藏，JS计算好位置后再显示，防止闪烁 */
-            visibility: hidden; 
+            visibility: hidden;
+        }
+
+        /* 旋转动画先定义好，但默认是暂停的 (paused) */
+        .sausage-box svg {
+            animation-play-state: paused; 
+        }
+        /* 当 body 有了 playing 类名后，动画才开始播 */
+        body.playing .sausage-box svg {
+            animation-play-state: running;
         }
 
         @keyframes spin {
@@ -30,9 +69,7 @@
             to { transform: rotate(360deg); }
         }
 
-        /* --- 修改这里：巨型大香肠 --- */
         #big-sausage {
-            /* 尺寸翻倍！非常有冲击力 */
             width: 320px;
             height: 320px;
             z-index: 10;
@@ -40,15 +77,12 @@
         #big-sausage svg {
             width: 100%;
             height: 100%;
-            /* 转速稍快一点点，增加动感 */
             animation: spin 0.8s linear infinite;
-            /* 投影加深加大，更有立体感 */
             filter: drop-shadow(15px 15px 25px rgba(0,0,0,0.4));
+            animation-play-state: paused; /* 初始暂停 */
         }
 
-        /* --- 修改这里：巨型小香肠 --- */
         #small-sausage {
-            /* 尺寸翻倍到 160px */
             width: 160px;
             height: 160px;
             z-index: 5;
@@ -56,15 +90,12 @@
         #small-sausage svg {
             width: 100%;
             height: 100%;
-            /* 极速旋转 */
             animation: spin 0.5s linear infinite;
             filter: drop-shadow(8px 8px 15px rgba(0,0,0,0.3));
+            animation-play-state: paused; /* 初始暂停 */
         }
         
-        /* SVG 内部样式调整，让香肠看起来更“粗壮” */
-        svg rect {
-             rx: 60; ry: 60; /* 圆角更大，显得更Q弹 */
-        }
+        svg rect { rx: 60; ry: 60; }
 
         .text {
             position: absolute;
@@ -80,6 +111,13 @@
     </style>
 </head>
 <body>
+
+    <audio id="bgm" loop src="bgm.mp3" preload="auto"></audio>
+
+    <div id="start-overlay">
+        <span>👆</span>
+        点击屏幕<br>开始激情乱舞
+    </div>
 
     <div id="big-sausage" class="sausage-box">
         <svg viewBox="-140 -140 280 280" xmlns="http://www.w3.org/2000/svg">
@@ -103,65 +141,81 @@
         </svg>
     </div>
 
-    <div class="text">⚠️ 巨物来袭 ⚠️</div>
+    <div class="text">⚠️ 巨物来袭 · 音量预警 ⚠️</div>
 
     <script>
         const w = window.innerWidth;
         const h = window.innerHeight;
-
-        // --- 重要：JS里的尺寸数据也要同步更新，否则碰撞检测不准 ---
         const bigSize = 320;
         const smallSize = 160;
 
         const items = [
             { 
                 el: document.getElementById('big-sausage'), 
-                // 确保出生点不会卡在屏幕外面
                 x: Math.random() * (w - bigSize), 
                 y: Math.random() * (h - bigSize), 
-                vx: 4, // 速度稍微加了一点
-                vy: 4, 
-                width: bigSize, 
-                height: bigSize 
+                vx: 4, vy: 4, width: bigSize, height: bigSize 
             },
             { 
                 el: document.getElementById('small-sausage'), 
                 x: Math.random() * (w - smallSize), 
                 y: Math.random() * (h - smallSize), 
-                vx: -7, // 小的跑得飞快
-                vy: 8, 
-                width: smallSize, 
-                height: smallSize 
+                vx: -7, vy: 8, width: smallSize, height: smallSize 
             }
         ];
 
-        // 初始化位置后显示元素
         items.forEach(item => {
              item.el.style.transform = `translate(${item.x}px, ${item.y}px)`;
              item.el.style.visibility = 'visible';
         });
 
+        let isPlaying = false; // 记录是否开始播放
 
         function animate() {
+            if (!isPlaying) {
+                requestAnimationFrame(animate); // 没点开始前，虽然在循环但不更新位置
+                return;
+            }
             const currentW = window.innerWidth;
             const currentH = window.innerHeight;
-
             items.forEach(item => {
                 item.x += item.vx;
                 item.y += item.vy;
-
-                // 撞墙检测
-                if (item.x <= 0 || item.x + item.width >= currentW) {
-                    item.vx = -item.vx;
-                }
-                if (item.y <= 0 || item.y + item.height >= currentH) {
-                    item.vy = -item.vy;
-                }
-
+                if (item.x <= 0 || item.x + item.width >= currentW) item.vx = -item.vx;
+                if (item.y <= 0 || item.y + item.height >= currentH) item.vy = -item.vy;
                 item.el.style.transform = `translate(${item.x}px, ${item.y}px)`;
             });
             requestAnimationFrame(animate);
         }
+
+        // --- 新增：点击开始播放的逻辑 ---
+        const overlay = document.getElementById('start-overlay');
+        const bgm = document.getElementById('bgm');
+
+        // 设置播放速度为 1.5 倍
+        bgm.playbackRate = 1.5;
+
+        // 监听任意位置的点击事件（只监听一次）
+        document.body.addEventListener('click', function startClick() {
+            // 1. 播放音乐
+            bgm.play().then(() => {
+                // 播放成功后：
+                // 2. 隐藏覆盖层
+                overlay.style.display = 'none';
+                // 3. 给 body 加一个类，让 CSS 里的旋转动画开始
+                document.body.classList.add('playing');
+                // 4. 让 JS 里的移动动画开始
+                isPlaying = true;
+            }).catch(err => {
+                console.log("播放失败，可能是用户没有交互:", err);
+                // 如果播放失败，点击覆盖层再试一次
+                overlay.textContent = "播放失败，请再点一次！";
+            });
+
+            // 移除监听器，确保只触发一次
+            document.body.removeEventListener('click', startClick);
+        }, { once: true }); // {once:true} 也是只触发一次的意思，双重保险
+
         animate();
     </script>
 </body>
