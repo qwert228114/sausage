@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>巨型双肠乱舞（带感音乐版）</title>
+    <title>巨型双肠乱舞（最终修复版）</title>
     <style>
         body, html {
             margin: 0;
@@ -13,30 +13,31 @@
             background-color: #ffeb3b;
             overflow: hidden;
             position: relative;
-            /* 禁止用户选中文字，防止点击时误操作 */
-            user-select: none; 
+            user-select: none;
+            -webkit-tap-highlight-color: transparent; /* 去除手机点击高亮 */
         }
 
-        /* --- 新增：点击开始的覆盖层 --- */
         #start-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.7); /* 半透明黑色背景 */
+            background-color: rgba(0,0,0,0.85);
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 999; /* 保证在最上层 */
+            z-index: 999;
             color: white;
-            font-size: 24px;
+            font-size: 22px;
             font-weight: bold;
             flex-direction: column;
             cursor: pointer;
+            text-align: center;
+            line-height: 1.5;
         }
         #start-overlay span {
-            font-size: 60px;
+            font-size: 50px;
             margin-bottom: 20px;
             animation: pulse 1.5s infinite;
         }
@@ -52,14 +53,14 @@
             justify-content: center;
             align-items: center;
             will-change: transform;
-            visibility: hidden;
+            visibility: hidden; 
         }
 
-        /* 旋转动画先定义好，但默认是暂停的 (paused) */
+        /* 动画控制：默认暂停 */
         .sausage-box svg {
             animation-play-state: paused; 
         }
-        /* 当 body 有了 playing 类名后，动画才开始播 */
+        /* 激活后开始旋转 */
         body.playing .sausage-box svg {
             animation-play-state: running;
         }
@@ -69,44 +70,27 @@
             to { transform: rotate(360deg); }
         }
 
-        #big-sausage {
-            width: 320px;
-            height: 320px;
-            z-index: 10;
-        }
+        #big-sausage { width: 320px; height: 320px; z-index: 10; }
         #big-sausage svg {
-            width: 100%;
-            height: 100%;
+            width: 100%; height: 100%;
             animation: spin 0.8s linear infinite;
             filter: drop-shadow(15px 15px 25px rgba(0,0,0,0.4));
-            animation-play-state: paused; /* 初始暂停 */
         }
 
-        #small-sausage {
-            width: 160px;
-            height: 160px;
-            z-index: 5;
-        }
+        #small-sausage { width: 160px; height: 160px; z-index: 5; }
         #small-sausage svg {
-            width: 100%;
-            height: 100%;
+            width: 100%; height: 100%;
             animation: spin 0.5s linear infinite;
             filter: drop-shadow(8px 8px 15px rgba(0,0,0,0.3));
-            animation-play-state: paused; /* 初始暂停 */
         }
         
         svg rect { rx: 60; ry: 60; }
 
         .text {
-            position: absolute;
-            bottom: 20px;
-            width: 100%;
-            text-align: center;
-            color: #d32f2f;
-            font-size: 16px;
-            font-weight: bold;
-            pointer-events: none;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+            position: absolute; bottom: 20px; width: 100%;
+            text-align: center; color: #d32f2f;
+            font-size: 14px; font-weight: bold;
+            pointer-events: none; opacity: 0.6;
         }
     </style>
 </head>
@@ -116,7 +100,7 @@
 
     <div id="start-overlay">
         <span>👆</span>
-        点击屏幕<br>开始激情乱舞
+        <div>点击屏幕开始<br><span style="font-size:14px; opacity:0.7; font-weight:normal">(如果不响就是没加载到音乐)</span></div>
     </div>
 
     <div id="big-sausage" class="sausage-box">
@@ -141,7 +125,7 @@
         </svg>
     </div>
 
-    <div class="text">⚠️ 巨物来袭 · 音量预警 ⚠️</div>
+    <div class="text">⚠️ 巨物来袭 ⚠️</div>
 
     <script>
         const w = window.innerWidth;
@@ -164,16 +148,17 @@
             }
         ];
 
+        // 初始化显示
         items.forEach(item => {
              item.el.style.transform = `translate(${item.x}px, ${item.y}px)`;
              item.el.style.visibility = 'visible';
         });
 
-        let isPlaying = false; // 记录是否开始播放
+        let isPlaying = false; 
 
         function animate() {
             if (!isPlaying) {
-                requestAnimationFrame(animate); // 没点开始前，虽然在循环但不更新位置
+                requestAnimationFrame(animate); 
                 return;
             }
             const currentW = window.innerWidth;
@@ -188,33 +173,32 @@
             requestAnimationFrame(animate);
         }
 
-        // --- 新增：点击开始播放的逻辑 ---
+        // --- 修复核心：更强壮的启动逻辑 ---
         const overlay = document.getElementById('start-overlay');
         const bgm = document.getElementById('bgm');
-
-        // 设置播放速度为 1.5 倍
         bgm.playbackRate = 1.5;
 
-        // 监听任意位置的点击事件（只监听一次）
-        document.body.addEventListener('click', function startClick() {
-            // 1. 播放音乐
-            bgm.play().then(() => {
-                // 播放成功后：
-                // 2. 隐藏覆盖层
-                overlay.style.display = 'none';
-                // 3. 给 body 加一个类，让 CSS 里的旋转动画开始
-                document.body.classList.add('playing');
-                // 4. 让 JS 里的移动动画开始
-                isPlaying = true;
-            }).catch(err => {
-                console.log("播放失败，可能是用户没有交互:", err);
-                // 如果播放失败，点击覆盖层再试一次
-                overlay.textContent = "播放失败，请再点一次！";
-            });
+        // 定义启动函数
+        function startAction() {
+            if (isPlaying) return; // 防止重复触发
 
-            // 移除监听器，确保只触发一次
-            document.body.removeEventListener('click', startClick);
-        }, { once: true }); // {once:true} 也是只触发一次的意思，双重保险
+            // 1. 无论音乐是否成功，先让动画跑起来！(这是最重要的修改)
+            overlay.style.display = 'none';
+            document.body.classList.add('playing');
+            isPlaying = true;
+
+            // 2. 尝试播放音乐，如果失败（比如文件找不到），在控制台报错但不影响动画
+            bgm.play().catch(function(error) {
+                console.log("音乐播放失败 (可能是文件名不对):", error);
+            });
+        }
+
+        // 同时监听 点击 和 触摸，保证手机响应灵敏
+        overlay.addEventListener('click', startAction);
+        overlay.addEventListener('touchstart', function(e) {
+            e.preventDefault(); // 防止触发点击延迟
+            startAction();
+        }, {passive: false});
 
         animate();
     </script>
