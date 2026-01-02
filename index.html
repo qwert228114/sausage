@@ -3,36 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>香肠乱舞（全平台兼容版）</title>
+    <title>体感香肠大乱斗</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #ffeb3b; overflow: hidden; position: relative; user-select: none; -webkit-tap-highlight-color: transparent; }
         
+        /* 启动遮罩 */
         #start-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.85);
+            background-color: rgba(0,0,0,0.9);
             display: flex; justify-content: center; align-items: center;
-            z-index: 999; color: white; font-size: 20px; font-weight: bold;
-            flex-direction: column; cursor: pointer; text-align: center;
+            z-index: 999; color: white; flex-direction: column; cursor: pointer; text-align: center;
         }
         
-        /* 加一个显眼的按钮，诱导用户去点它 */
         #play-btn {
-            background: #ff5722;
-            color: white;
-            padding: 15px 40px;
-            border-radius: 50px;
-            margin-top: 20px;
-            font-size: 24px;
-            box-shadow: 0 4px 15px rgba(255, 87, 34, 0.4);
-            animation: pulse 1.5s infinite;
+            background: #ff5722; color: white; padding: 15px 40px; border-radius: 50px;
+            margin-top: 30px; font-size: 24px; font-weight: bold;
+            box-shadow: 0 0 20px rgba(255, 87, 34, 0.6);
+            animation: pulse 1s infinite;
         }
 
+        /* 香肠容器 */
         .sausage-box { position: absolute; display: flex; justify-content: center; align-items: center; visibility: hidden; will-change: transform; }
         .sausage-box svg { animation-play-state: paused; }
         body.playing .sausage-box svg { animation-play-state: running; }
         
+        /* 碎裂粒子样式 */
+        .particle {
+            position: absolute;
+            width: 8px; height: 8px;
+            background-color: #cd5c5c; /* 肉色 */
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        /* 屏幕撞击震动动画 */
+        .shake-screen { animation: screen-shake 0.2s ease-in-out; }
+        @keyframes screen-shake {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(-5px, 5px); }
+            50% { transform: translate(5px, -5px); }
+            75% { transform: translate(-5px, -5px); }
+            100% { transform: translate(0, 0); }
+        }
+
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         
         #big-sausage { width: 320px; height: 320px; z-index: 10; }
         #big-sausage svg { width: 100%; height: 100%; animation: spin 0.8s linear infinite; filter: drop-shadow(15px 15px 25px rgba(0,0,0,0.4)); }
@@ -43,18 +59,22 @@
         .text { position: absolute; bottom: 20px; width: 100%; text-align: center; color: #d32f2f; font-size: 14px; opacity: 0.6; pointer-events: none; }
     </style>
 </head>
-<body>
+<body id="game-body">
 
     <audio id="bgm" loop preload="auto" playsinline webkit-playsinline>
         <source src="bgm.mp3" type="audio/mpeg">
     </audio>
 
     <div id="start-overlay">
-        <div style="margin-bottom: 20px; font-size: 50px">🌭</div>
-        <div>准备好了吗？</div>
-        <div id="play-btn">点我开始</div>
-        <div id="status" style="margin-top:10px; font-size:12px; color:#aaa; font-weight:normal"></div>
+        <div style="font-size: 60px">📱</div>
+        <div style="font-size: 20px; margin-top: 10px">
+            晃动手机 · 撞击碎裂 · 震动反馈
+        </div>
+        <div id="play-btn">开启体感模式</div>
+        <div id="status" style="margin-top:15px; font-size:12px; color:#888;"></div>
     </div>
+
+    <div id="particles-container"></div>
 
     <div id="big-sausage" class="sausage-box">
         <svg viewBox="-140 -140 280 280" xmlns="http://www.w3.org/2000/svg"><rect x="-55" y="-130" width="110" height="260" fill="#cd5c5c" /><path d="M -35 -90 Q -25 0 -35 90" stroke="rgba(255,255,255,0.5)" stroke-width="14" fill="none" stroke-linecap="round" /><path d="M -25 -110 Q 0 -120 25 -110" stroke="rgba(255,255,255,0.4)" stroke-width="10" fill="none" stroke-linecap="round" /><path d="M -45 -50 L 5 -60" stroke="#8b0000" stroke-width="6" stroke-linecap="round" /><path d="M -40 30 L 15 20" stroke="#8b0000" stroke-width="6" stroke-linecap="round" /><path d="M -45 110 L 0 100" stroke="#8b0000" stroke-width="6" stroke-linecap="round" /></svg>
@@ -63,25 +83,129 @@
         <svg viewBox="-140 -140 280 280" xmlns="http://www.w3.org/2000/svg"><rect x="-55" y="-130" width="110" height="260" fill="#cd5c5c" /><path d="M -35 -90 Q -25 0 -35 90" stroke="rgba(255,255,255,0.5)" stroke-width="14" fill="none" stroke-linecap="round" /><path d="M -25 -110 Q 0 -120 25 -110" stroke="rgba(255,255,255,0.4)" stroke-width="10" fill="none" stroke-linecap="round" /><path d="M -45 -50 L 5 -60" stroke="#8b0000" stroke-width="6" stroke-linecap="round" /><path d="M -40 30 L 15 20" stroke="#8b0000" stroke-width="6" stroke-linecap="round" /><path d="M -45 110 L 0 100" stroke="#8b0000" stroke-width="6" stroke-linecap="round" /></svg>
     </div>
 
-    <div class="text">⚠️ 全平台兼容修复版 ⚠️</div>
+    <div class="text">⚠️ 倾斜手机控制重力 ⚠️</div>
 
     <script>
-        // 1. 动画逻辑
+        // === 1. 初始化变量 ===
         const w = window.innerWidth, h = window.innerHeight;
+        // 初始速度设为0，完全由重力控制，或者保留一点初速度
         const items = [
-            { el: document.getElementById('big-sausage'), x: w/2-160, y: h/2-160, vx: 4, vy: 4, w: 320, h: 320 },
-            { el: document.getElementById('small-sausage'), x: w/2-80, y: h/2-80, vx: -7, vy: 8, w: 160, h: 160 }
+            { el: document.getElementById('big-sausage'), x: w/2-160, y: h/2-160, vx: 0, vy: 0, w: 320, h: 320, mass: 2 },
+            { el: document.getElementById('small-sausage'), x: w/2-80, y: h/2-80, vx: 0, vy: 0, w: 160, h: 160, mass: 1 }
         ];
         items.forEach(i => { i.el.style.transform = `translate(${i.x}px, ${i.y}px)`; i.el.style.visibility = 'visible'; });
-        
+
         let isPlaying = false;
+        let gravityX = 0;
+        let gravityY = 0;
+        const body = document.getElementById('game-body');
+        const particlesContainer = document.getElementById('particles-container');
+
+        // === 2. 碎裂特效 (粒子系统) ===
+        function createExplosion(x, y, amount) {
+            // 手机震动 (200毫秒)
+            if (navigator.vibrate) navigator.vibrate(200);
+
+            // 屏幕晃动特效
+            body.classList.remove('shake-screen');
+            void body.offsetWidth; // 触发重绘
+            body.classList.add('shake-screen');
+
+            // 产生粒子
+            for (let i = 0; i < amount; i++) {
+                const p = document.createElement('div');
+                p.classList.add('particle');
+                p.style.left = x + 'px';
+                p.style.top = y + 'px';
+                
+                // 随机大小和颜色深浅
+                const size = Math.random() * 10 + 5;
+                p.style.width = size + 'px';
+                p.style.height = size + 'px';
+                p.style.background = Math.random() > 0.5 ? '#cd5c5c' : '#8b0000'; // 两种肉色
+
+                particlesContainer.appendChild(p);
+
+                // 随机爆炸方向
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = Math.random() * 10 + 2;
+                const velX = Math.cos(angle) * velocity;
+                const velY = Math.sin(angle) * velocity;
+
+                // 简单的粒子动画
+                let opacity = 1;
+                let posX = x;
+                let posY = y;
+
+                const anim = setInterval(() => {
+                    posX += velX;
+                    posY += velY;
+                    opacity -= 0.05;
+                    p.style.left = posX + 'px';
+                    p.style.top = posY + 'px';
+                    p.style.opacity = opacity;
+
+                    if (opacity <= 0) {
+                        clearInterval(anim);
+                        p.remove();
+                    }
+                }, 20);
+            }
+        }
+
+        // === 3. 物理引擎循环 ===
         function animate() {
             if(isPlaying) {
                 const cw = window.innerWidth, ch = window.innerHeight;
+
                 items.forEach(i => {
-                    i.x += i.vx; i.y += i.vy;
-                    if(i.x<=0 || i.x+i.w>=cw) i.vx *= -1;
-                    if(i.y<=0 || i.y+i.h>=ch) i.vy *= -1;
+                    // 加上重力感应带来的加速度 (调整系数 0.5 让控制更跟手)
+                    i.vx += gravityX * 0.5;
+                    i.vy += gravityY * 0.5;
+
+                    // 摩擦力 (防止无限加速)
+                    i.vx *= 0.98;
+                    i.vy *= 0.98;
+
+                    // 更新位置
+                    i.x += i.vx;
+                    i.y += i.vy;
+
+                    // --- 碰撞检测核心 ---
+                    let hit = false;
+                    let hitX = 0, hitY = 0;
+
+                    // 撞左墙
+                    if (i.x <= 0) {
+                        i.x = 0; 
+                        i.vx = -i.vx * 0.6; // 反弹并衰减
+                        hit = true; hitX = 0; hitY = i.y + i.h/2;
+                    }
+                    // 撞右墙
+                    if (i.x + i.w >= cw) {
+                        i.x = cw - i.w;
+                        i.vx = -i.vx * 0.6;
+                        hit = true; hitX = cw; hitY = i.y + i.h/2;
+                    }
+                    // 撞顶
+                    if (i.y <= 0) {
+                        i.y = 0;
+                        i.vy = -i.vy * 0.6;
+                        hit = true; hitX = i.x + i.w/2; hitY = 0;
+                    }
+                    // 撞底
+                    if (i.y + i.h >= ch) {
+                        i.y = ch - i.h;
+                        i.vy = -i.vy * 0.6;
+                        hit = true; hitX = i.x + i.w/2; hitY = ch;
+                    }
+
+                    // 只有当撞击速度足够快时，才触发特效（防止静止时一直震动）
+                    if (hit && (Math.abs(i.vx) > 2 || Math.abs(i.vy) > 2)) {
+                        // 炸出 10-15 个粒子
+                        createExplosion(hitX, hitY, 15);
+                    }
+
                     i.el.style.transform = `translate(${i.x}px, ${i.y}px)`;
                 });
             }
@@ -89,51 +213,60 @@
         }
         animate();
 
-        // 2. 音乐核心修复逻辑
+        // === 4. 陀螺仪与启动逻辑 ===
         const bgm = document.getElementById('bgm');
         const overlay = document.getElementById('start-overlay');
         const status = document.getElementById('status');
+        const playBtn = document.getElementById('play-btn');
 
-        // 在用户交互时，必须同步触发 play
-        function unlockAudio() {
-            if(isPlaying) return;
-
-            status.textContent = "正在加载...";
+        function handleOrientation(event) {
+            // gamma: 左倾(-90) 到 右倾(90)
+            // beta:  前倾(-180) 到 后倾(180)
+            // 限制一下最大值，防止加速度过大
+            const x = event.gamma || 0; 
+            const y = event.beta || 0;
             
-            // 关键：强制设置音量和时间，激活音频上下文
-            bgm.volume = 1.0;
-            bgm.currentTime = 0;
-            
-            // 尝试播放
-            var playPromise = bgm.play();
-
-            if (playPromise !== undefined) {
-                playPromise.then(_ => {
-                    // 播放成功了！
-                    // 这时候再设置倍速，比较稳
-                    bgm.playbackRate = 1.5; 
-                    
-                    overlay.style.display = 'none';
-                    document.body.classList.add('playing');
-                    isPlaying = true;
-                })
-                .catch(error => {
-                    console.log("Play failed:", error);
-                    status.textContent = "播放失败，请检查音量或静音键";
-                    status.style.color = "yellow";
-                    
-                    // 即使没声音，也强制让动画开始，不至于卡死
-                    setTimeout(() => {
-                        overlay.style.display = 'none';
-                        document.body.classList.add('playing');
-                        isPlaying = true;
-                    }, 1000);
-                });
-            }
+            // 简单的映射
+            gravityX = x / 5; 
+            gravityY = y / 5;
         }
 
-        // 只使用 click，这在现代移动浏览器上最稳
-        overlay.addEventListener('click', unlockAudio);
+        async function startGame() {
+            if(isPlaying) return;
+
+            status.textContent = "正在请求传感器权限...";
+            
+            // 1. 处理音频
+            bgm.volume = 1.0;
+            bgm.currentTime = 0;
+            bgm.play().then(() => { bgm.playbackRate = 1.5; }).catch(e => console.log(e));
+
+            // 2. 处理 iOS 13+ 的陀螺仪权限 (这是最关键的一步)
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                try {
+                    const permissionState = await DeviceOrientationEvent.requestPermission();
+                    if (permissionState === 'granted') {
+                        window.addEventListener('deviceorientation', handleOrientation);
+                        status.textContent = "传感器已连接！";
+                    } else {
+                        status.textContent = "❌ 权限被拒绝，无法使用体感";
+                        alert("请允许动作与方向权限，否则无法晃动香肠");
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+            } else {
+                // 非 iOS 13+ 设备 (Android 或旧 iOS) 直接监听
+                window.addEventListener('deviceorientation', handleOrientation);
+            }
+
+            // 3. 启动画面
+            overlay.style.display = 'none';
+            document.body.classList.add('playing');
+            isPlaying = true;
+        }
+
+        playBtn.addEventListener('click', startGame);
 
     </script>
 </body>
